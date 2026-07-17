@@ -1,121 +1,33 @@
-let currentPlotNumber = null;
+let currentPlotKey = null;
+let plotData = {};
 
-const plotData = {
-    1: {
-        title: "Plot 1",
-        status: "Assigned",
-        gardener: "John Doe",
-        notes: "No notes yet."
-    },
-    2: {
-        title: "Plot 2",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    3: {
-        title: "Plot 3",
-        status: "Assigned",
-        gardener: "Maria Lopez",
-        notes: "Tomatoes and basil"
-    },
-    4: {
-        title: "Plot 4",
-        status: "Assigned",
-        gardener: "Alex Johnson",
-        notes: "Needs watering"
-    },
-    5: {
-        title: "Plot 5",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    6: {
-        title: "Plot 6",
-        status: "Assigned",
-        gardener: "Emily Davis",
-        notes: "Planting cucumbers"
-    },
-    7: {
-        title: "Plot 7",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    8: {
-        title: "Plot 8",
-        status: "Assigned",
-        gardener: "Michael Brown",
-        notes: "Harvesting peppers"
-    },
-    9: {
-        title: "Plot 9",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    10: {
-        title: "Plot 10",
-        status: "Assigned",
-        gardener: "Sarah Wilson",
-        notes: "Planting carrots"
-    },
-    11: {
-        title: "Plot 11",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    12: {
-        title: "Plot 12",
-        status: "Assigned",
-        gardener: "David Martinez",
-        notes: "Weeding and mulching"
-    },
-    13: {
-        title: "Plot 13",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    14: {
-        title: "Plot 14",
-        status: "Assigned",
-        gardener: "Laura Garcia",
-        notes: "Planting lettuce"
-    },
-    15: {
-        title: "Plot 15",
-        status: "Available",
-        gardener: "",
-        notes: ""
-    },
-    16: {
-        title: "Plot 16",
-        status: "Assigned",
-        gardener: "James Anderson",
-        notes: "Harvesting zucchini"
-    },
-    herb_garden: {
-        title: "Community Herb Garden",
-        status: "Shared Area",
-        gardener: "Community",
-        notes: "Available for all gardeners."
-    },
+async function loadPlotData() {
+    try {
+        const response = await fetch("/api/plots");
 
-    berry_plot: {
-        title: "Community Berry Plot",
-        status: "Shared Area",
-        gardener: "Community",
-        notes: "Blueberries and raspberries."
-    }                                  
-};
+        if (!response.ok) {
+            throw new Error("Unable to load plot data.");
+        }
+
+        plotData = await response.json();
+        updatePlotSummary();
+        updatePlotColors();
+    } catch (error) {
+        console.error("Error loading plot data:", error);
+    }
+}
+
+loadPlotData();
 
 function openPlotModal(plotNumber) {
-    currentPlotNumber = plotNumber;
+    currentPlotKey = plotNumber;
 
     const plot = plotData[plotNumber];
+
+    if (!plot) {
+        console.error("Plot data was not found.");
+        return;
+    }
 
     document.getElementById("modal-title").textContent = plot.title;
     document.getElementById("modal-status").textContent = plot.status;
@@ -139,7 +51,7 @@ function closePlotModal() {
 }
 
 function enableEditMode() {
-    const plot = plotData[currentPlotNumber];
+    const plot = plotData[currentPlotKey];
 
     document.getElementById("modal-status").innerHTML = `
         <select id="status-input">
@@ -161,45 +73,53 @@ function enableEditMode() {
     document.getElementById("cancel-button").style.display = "inline-block";
 }
 
-function savePlotChanges() {
+async function savePlotChanges() {
     const status = document.getElementById("status-input").value;
-    let gardener = document.getElementById("gardener-input").value;
-    const notes = document.getElementById("notes-input").value;
+    let gardener = document.getElementById("gardener-input").value.trim();
+    const notes = document.getElementById("notes-input").value.trim();
 
     if (status === "Available") {
         gardener = "";
     }
 
-    plotData[currentPlotNumber] = {
-        title: plotData[currentPlotNumber].title,
-        status: status,
-        gardener: gardener,
-        notes: notes
-    };
+    try {
+        const response = await fetch(`/api/plots/${currentPlotKey}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                status: status,
+                gardener: gardener,
+                notes: notes
+            })
+        });
 
-    document.getElementById("modal-status").textContent = status;
-    document.getElementById("modal-gardener").textContent = gardener || "—";
-    document.getElementById("modal-notes").textContent = notes || "—";
-
-    const currentPlot = document.getElementById("plot" + currentPlotNumber);
-
-    if (currentPlot) {
-        const plotFill = currentPlot.querySelector("rect:first-child");
-
-        if (status === "Assigned") {
-            plotFill.setAttribute("fill", "#8DBB6B");
-        } else {
-            plotFill.setAttribute("fill", "#B8D99B");
+        if (!response.ok) {
+            throw new Error("Unable to save plot changes.");
         }
-    }
 
-    document.getElementById("edit-button").style.display = "inline-block";
-    document.getElementById("save-button").style.display = "none";
-    document.getElementById("cancel-button").style.display = "none";
+        const updatedPlot = await response.json();
+        plotData[currentPlotKey] = updatedPlot;
+        updatePlotSummary();
+        updatePlotColors();
+
+        document.getElementById("modal-status").textContent = updatedPlot.status;
+        document.getElementById("modal-gardener").textContent =
+            updatedPlot.gardener || "—";
+        document.getElementById("modal-notes").textContent =
+            updatedPlot.notes || "—";
+
+        document.getElementById("edit-button").style.display = "inline-block";
+        document.getElementById("save-button").style.display = "none";
+        document.getElementById("cancel-button").style.display = "none";
+    } catch (error) {
+        console.error("Error saving plot changes:", error);
+    }
 }
 
 function cancelEditMode() {
-    const plot = plotData[currentPlotNumber];
+    const plot = plotData[currentPlotKey];
 
     document.getElementById("modal-status").textContent = plot.status;
     document.getElementById("modal-gardener").textContent = plot.gardener || "—";
@@ -213,4 +133,50 @@ function cancelEditMode() {
 
     document.getElementById("save-button").style.display = "none";
     document.getElementById("cancel-button").style.display = "none";
+}
+
+function updatePlotSummary() {
+    let available = 0;
+    let assigned = 0;
+
+    for (const key in plotData) {
+        if (plotData[key].status === "Available") {
+            available++;
+        } else if (plotData[key].status === "Assigned") {
+            assigned++;
+        }
+    }
+
+    document.getElementById("plot-summary").textContent =
+        `Available: ${available} | Assigned: ${assigned}`;
+}
+
+function updatePlotColors() {
+    for (const key in plotData) {
+        const plot = plotData[key];
+
+        if (plot.status === "Shared Area") {
+            continue;
+        }
+
+        const plotElement = document.getElementById(`plot${key}`);
+
+        if (!plotElement) {
+            console.error(`SVG element plot${key} was not found.`);
+            continue;
+        }
+
+        const plotFill = plotElement.querySelector("rect:first-child");
+
+        if (!plotFill) {
+            console.error(`Fill rectangle for plot${key} was not found.`);
+            continue;
+        }
+
+        if (plot.status === "Assigned") {
+            plotFill.setAttribute("fill", "#8DBB6B");
+        } else if (plot.status === "Available") {
+            plotFill.setAttribute("fill", "#B8D99B");
+        }
+    }
 }
