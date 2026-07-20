@@ -51,7 +51,7 @@ Changes are immediately reflected in the interface and remain saved after refres
 
 - Python
 - Flask
-- Flask-SQLAlchemy
+- SQLAlchemy
 - SQLite
 - HTML
 - CSS
