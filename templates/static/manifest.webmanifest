@@ -1,0 +1,10 @@
+{
+  "name": "Community Garden Map",
+  "short_name": "Garden Map",
+  "description": "An interactive community garden plot mapping application.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F5F0",
+  "theme_color": "#F7F5F0"
+}
